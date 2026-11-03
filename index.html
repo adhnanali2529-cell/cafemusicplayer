@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Melody Café Player</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #e10600;
+    --red-dark: #8a0000;
+    --blood: #2a0000;
+    --ink: #111;
+    --paper: #fff6e9;
+    --yellow: #ffd400;
+    --white: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: "Comic Neue", "Comic Sans MS", sans-serif;
+    color: var(--ink);
+    background-color: var(--red);
+    background-image:
+      radial-gradient(rgba(0,0,0,.22) 1.4px, transparent 1.6px),
+      repeating-conic-gradient(from 0deg at 50% 0%, rgba(255,255,255,.07) 0deg 4deg, transparent 4deg 9deg);
+    background-size: 12px 12px, 100% 100%;
+    background-attachment: fixed;
+    min-height: 100vh;
+    padding-bottom: 120px;
+    overflow-x: hidden;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
+
+  /* ---------- Title ---------- */
+  header { text-align: center; padding: 18px 0 6px; }
+  h1 {
+    font-family: "Bangers", cursive;
+    font-size: clamp(44px, 9vw, 96px);
+    letter-spacing: 4px;
+    margin: 0;
+    color: var(--yellow);
+    -webkit-text-stroke: 3px var(--ink);
+    text-shadow: 6px 6px 0 var(--ink), 10px 10px 0 var(--red-dark);
+    transform: rotate(-3deg);
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float { 50% { transform: rotate(-3deg) translateY(-6px); } }
+  .tagline {
+    display: inline-block; margin-top: 10px;
+    background: var(--paper); border: 3px solid var(--ink);
+    padding: 6px 16px; font-weight: 700; transform: rotate(1.5deg);
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+
+  /* ---------- Panels ---------- */
+  .panel {
+    background: var(--paper);
+    border: 4px solid var(--ink);
+    box-shadow: 8px 8px 0 var(--ink);
+    padding: 16px;
+    margin: 22px 0;
+    position: relative;
+  }
+  .panel h2 {
+    font-family: "Bangers", cursive; font-size: 30px; letter-spacing: 2px;
+    margin: -34px 0 12px -6px; display: inline-block;
+    background: var(--red); color: var(--white);
+    border: 3px solid var(--ink); padding: 2px 14px;
+    transform: rotate(-2deg); box-shadow: 4px 4px 0 var(--ink);
+    -webkit-text-stroke: 1px var(--ink);
+  }
+
+  /* ---------- Buttons / inputs ---------- */
+  .btn {
+    font-family: "Bangers", cursive; font-size: 19px; letter-spacing: 1px;
+    background: var(--yellow); color: var(--ink);
+    border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink);
+    padding: 7px 14px; cursor: pointer; transition: transform .08s, box-shadow .08s;
+  }
+  .btn:hover { transform: translate(-2px,-2px) rotate(-1deg); box-shadow: 6px 6px 0 var(--ink); }
+  .btn:active { transform: translate(3px,3px); box-shadow: 1px 1px 0 var(--ink); }
+  .btn.red { background: var(--red); color: var(--white); }
+  .btn.black { background: var(--ink); color: var(--yellow); box-shadow: 4px 4px 0 var(--red-dark); }
+  .btn.small { font-size: 15px; padding: 4px 9px; box-shadow: 3px 3px 0 var(--ink); }
+  input, select {
+    font-family: inherit; font-size: 17px; font-weight: 700;
+    border: 3px solid var(--ink); padding: 8px 12px; background: var(--white);
+    box-shadow: inset 3px 3px 0 rgba(0,0,0,.12);
+  }
+  input:focus, select:focus { outline: 3px solid var(--red); }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .row input[type=text] { flex: 1; min-width: 200px; }
+  label.small { font-weight: 700; }
+
+  /* ---------- Search results ---------- */
+  .results {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 14px; margin-top: 16px;
+  }
+  .card {
+    background: var(--white); border: 3px solid var(--ink); box-shadow: 5px 5px 0 var(--ink);
+    padding: 8px; display: flex; flex-direction: column; gap: 6px;
+    animation: popin .35s cubic-bezier(.2,1.6,.4,1) both;
+  }
+  .card:nth-child(odd) { transform: rotate(-1deg); }
+  .card:nth-child(even) { transform: rotate(1deg); }
+  .card img { width: 100%; aspect-ratio: 1; object-fit: cover; border: 3px solid var(--ink); }
+  .card .t { font-weight: 700; line-height: 1.1; }
+  .card .a { font-size: 13px; color: #555; }
+  .card .row { gap: 6px; }
+  .empty-note { font-weight: 700; color: #666; padding: 8px 0; }
+
+  /* ---------- Linked list stage ---------- */
+  .stage {
+    display: flex; align-items: center; overflow-x: auto;
+    padding: 54px 10px 54px; min-height: 330px;
+    background:
+      repeating-linear-gradient(90deg, transparent 0 38px, rgba(225,6,0,.06) 38px 40px),
+      var(--paper);
+  }
+  .stage .empty {
+    margin: auto; font-family: "Bangers", cursive; font-size: 34px; color: var(--red);
+    -webkit-text-stroke: 1px var(--ink); text-align: center;
+  }
+  .stage .empty small { display: block; font-family: "Comic Neue"; font-size: 16px; color: var(--ink); -webkit-text-stroke: 0; }
+  .nullbox {
+    font-family: "Bangers", cursive; font-size: 18px; color: #777;
+    border: 3px dashed #999; padding: 6px 8px; flex: none;
+  }
+  .node {
+    flex: none; width: 168px; position: relative;
+    background: var(--white); border: 4px solid var(--ink); box-shadow: 6px 6px 0 var(--ink);
+    padding: 8px; transition: transform .2s;
+  }
+  .node:nth-of-type(odd) { transform: rotate(-1.5deg); }
+  .node:nth-of-type(even) { transform: rotate(1.5deg); }
+  .node img, .node .noart {
+    width: 100%; aspect-ratio: 1; object-fit: cover; border: 3px solid var(--ink); display: block;
+  }
+  .node .noart {
+    display: grid; place-items: center; background: var(--red);
+    font-family: "Bangers"; font-size: 46px; color: var(--yellow); -webkit-text-stroke: 2px var(--ink);
+  }
+  .node .t { font-weight: 700; margin-top: 6px; line-height: 1.1; min-height: 2.2em;
+    overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .node .d { font-size: 13px; color: #555; }
+  .node .ctrl { display: flex; gap: 6px; margin-top: 6px; }
+  .node.playing { background: var(--red); color: var(--white); animation: wobble .6s ease-in-out infinite; }
+  .node.playing .d { color: var(--yellow); }
+  .node.flash { background: var(--yellow) !important; transform: scale(1.12) rotate(0) !important; }
+  .node.new { animation: popin .5s cubic-bezier(.2,1.7,.4,1) both; }
+  .node.boom { animation: explode .5s ease-in forwards; }
+  @keyframes popin { from { transform: scale(0) rotate(-25deg); opacity: 0; } }
+  @keyframes wobble { 0%,100% { transform: rotate(-2deg) scale(1.04); } 50% { transform: rotate(2deg) scale(1.08); } }
+  @keyframes explode {
+    30% { transform: scale(1.2) rotate(8deg); background: var(--yellow); }
+    100% { transform: scale(0) rotate(-60deg); opacity: 0; filter: blur(4px); }
+  }
+  .tag {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    font-family: "Bangers", cursive; font-size: 20px; letter-spacing: 1px;
+    border: 3px solid var(--ink); padding: 0 10px; white-space: nowrap; box-shadow: 3px 3px 0 var(--ink);
+  }
+  .tag.head { top: -44px; background: var(--yellow); }
+  .tag.tail { bottom: -44px; background: var(--ink); color: var(--yellow); }
+  .tag.head::after, .tag.tail::after {
+    content: ""; position: absolute; left: 50%; margin-left: -7px; border: 7px solid transparent;
+  }
+  .tag.head::after { top: 100%; border-top-color: var(--ink); }
+  .tag.tail::after { bottom: 100%; border-bottom-color: var(--ink); }
+
+  .link { flex: none; width: 70px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .arrow { position: relative; height: 4px; width: 56px; }
+  .arrow::after { content: ""; position: absolute; top: -7px; border: 9px solid transparent; }
+  .arrow.next { background: var(--red); }
+  .arrow.next::after { right: -12px; border-left: 12px solid var(--red); }
+  .arrow.prev { background: var(--ink); }
+  .arrow.prev::after { left: -12px; border-right: 12px solid var(--ink); }
+  .link span { font-size: 11px; font-weight: 700; line-height: 1; }
+  .legend { font-weight: 700; font-size: 14px; margin-top: 8px; }
+  .legend b.r { color: var(--red); }
+
+  /* ---------- Log (speech bubble) ---------- */
+  .log {
+    background: var(--white); border: 3px solid var(--ink); border-radius: 18px;
+    padding: 12px 16px; height: 210px; overflow-y: auto;
+    font-family: Consolas, "Courier New", monospace; font-size: 14px; white-space: pre-wrap;
+  }
+
+  /* ---------- Player bar ---------- */
+  .player {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+    background: var(--ink); color: var(--white); border-top: 5px solid var(--yellow);
+    display: flex; align-items: center; gap: 14px; padding: 10px 16px;
+  }
+  .player img, .player .noart {
+    width: 64px; height: 64px; border: 3px solid var(--yellow); object-fit: cover; flex: none;
+    display: grid; place-items: center; background: var(--red); font-family: "Bangers"; font-size: 30px;
+  }
+  .player .info { flex: 1; min-width: 0; }
+  .player .now { font-family: "Bangers"; letter-spacing: 1px; font-size: 22px; color: var(--yellow);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .player .sub { font-size: 14px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar { height: 8px; background: #444; border: 2px solid var(--white); margin-top: 6px; }
+  .bar div { height: 100%; width: 0; background: var(--red); transition: width .25s linear; }
+  .eq { display: flex; gap: 3px; align-items: flex-end; height: 40px; }
+  .eq i { width: 6px; background: var(--red); height: 4px; border: 1px solid var(--yellow); }
+  .eq.on i { animation: eq .5s ease-in-out infinite alternate; }
+  .eq.on i:nth-child(2) { animation-delay: .1s } .eq.on i:nth-child(3) { animation-delay: .25s }
+  .eq.on i:nth-child(4) { animation-delay: .05s } .eq.on i:nth-child(5) { animation-delay: .3s }
+  @keyframes eq { to { height: 38px; } }
+
+  /* ---------- Comic FX ---------- */
+  .fx {
+    position: fixed; z-index: 100; pointer-events: none;
+    font-family: "Bangers", cursive; font-size: 46px; letter-spacing: 2px;
+    color: var(--red); -webkit-text-stroke: 2px var(--ink);
+    padding: 34px 40px; background: var(--yellow);
+    clip-path: polygon(50% 0%, 61% 22%, 85% 8%, 78% 34%, 100% 38%, 80% 55%, 96% 78%, 70% 72%, 64% 100%,
+                       50% 80%, 34% 100%, 30% 72%, 4% 80%, 20% 56%, 0% 38%, 22% 33%, 14% 8%, 39% 22%);
+    animation: fxpop .9s cubic-bezier(.2,1.6,.4,1) forwards;
+    translate: -50% -50%;
+  }
+  .fx.dark { background: var(--ink); color: var(--yellow); -webkit-text-stroke: 1px var(--red); }
+  @keyframes fxpop {
+    0% { transform: scale(0) rotate(-30deg); opacity: 1; }
+    40% { transform: scale(1.1) rotate(6deg); }
+    75% { transform: scale(1) rotate(-4deg); opacity: 1; }
+    100% { transform: scale(1.4) rotate(0); opacity: 0; }
+  }
+  .speedlines {
+    position: fixed; inset: 0; z-index: 90; pointer-events: none;
+    background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(0,0,0,.55) 0deg 1.5deg, transparent 1.5deg 7deg);
+    mask: radial-gradient(circle, transparent 28%, #000 70%);
+    -webkit-mask: radial-gradient(circle, transparent 28%, #000 70%);
+    animation: lines .45s ease-out forwards;
+  }
+  @keyframes lines { from { opacity: 1; transform: scale(1.3); } to { opacity: 0; transform: scale(1); } }
+  body.shake .wrap { animation: shake .4s; }
+  @keyframes shake {
+    20% { transform: translate(-10px, 4px) rotate(-1deg); } 40% { transform: translate(10px,-4px) rotate(1deg); }
+    60% { transform: translate(-8px, 2px); } 80% { transform: translate(6px,-2px); }
+  }
+
+  @media (max-width: 600px) {
+    .player .eq { display: none; }
+    .panel { padding: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>MELODY CAFÉ!!</h1>
+    <div class="tagline">Doubly linked list music player</div>
+  </header>
+
+  <!-- Search -->
+  <section class="panel">
+    <h2>Search any song!</h2>
+    <form class="row" id="searchForm">
+      <input type="text" id="q" placeholder="Type a song or artist… e.g. Blinding Lights" autocomplete="off">
+      <button class="btn red" type="submit">SEARCH!</button>
+    </form>
+    <div class="row" style="margin-top:12px">
+      <label class="small" for="keySel">Insert after:</label>
+      <select id="keySel"></select>
+    </div>
+    <div class="results" id="results"><div class="empty-note">Search results appear here. Previews come from the iTunes Search API.</div></div>
+  </section>
+
+  <!-- Linked list -->
+  <section class="panel">
+    <h2>The playlist</h2>
+    <div class="row">
+      <button class="btn" id="fwdBtn">→ Display forward</button>
+      <button class="btn" id="bwdBtn">← Display backward</button>
+      <button class="btn red" id="nextBtn">▶ Play next</button>
+      <button class="btn black" id="testBtn">★ Run Part C test</button>
+    </div>
+    <div class="stage" id="stage"></div>
+    <div class="legend"><b class="r">Red arrow</b> = next pointer &nbsp;·&nbsp; <b>Black arrow</b> = prev pointer &nbsp;·&nbsp; NULL = no node there</div>
+  </section>
+
+  <!-- Log -->
+  <section class="panel">
+    <h2>Output</h2>
+    <div class="log" id="log"></div>
+    <div class="row" style="margin-top:10px"><button class="btn small" id="clearBtn">Clear log</button></div>
+  </section>
+</div>
+
+<!-- Player -->
+<div class="player">
+  <div class="noart" id="pArt">♪</div>
+  <div class="info">
+    <div class="now" id="pTitle">Nothing playing</div>
+    <div class="sub" id="pSub">Add songs, then press play</div>
+    <div class="bar"><div id="pBar"></div></div>
+  </div>
+  <div class="eq" id="eq"><i></i><i></i><i></i><i></i><i></i></div>
+  <button class="btn small" id="pauseBtn">❚❚</button>
+  <button class="btn small red" id="nextBtn2">NEXT ▶</button>
+</div>
+<audio id="audio"></audio>
+
+<script>
+// =====================================================================
+//  Node (Part A c) — same as the Python Song class
+// =====================================================================
+class Song {
+  constructor(title, duration, artist = "", art = "", preview = "") {
+    this.title = title.slice(0, 30);   // max 30 characters
+    this.duration = duration;          // seconds
+    this.artist = artist;              // extra info for the web UI
+    this.art = art;
+    this.preview = preview;
+    this.prev = null;
+    this.next = null;
+  }
+}
+
+// =====================================================================
+//  Doubly linked list (Part B) — same logic as the Python Playlist
+// =====================================================================
+class Playlist {
+  constructor() {
+    this.head = null;   // first song
+    this.tail = null;   // last song
+  }
+
+  // Helper: first node with this title, or null
+  findSong(title) {
+    let cur = this.head;
+    while (cur !== null && cur.title !== title) cur = cur.next;
+    return cur;
+  }
+
+  // (a) Add at end
+  addSong(title, duration, extra = {}) {
+    const s = new Song(title, duration, extra.artist, extra.art, extra.preview);
+    if (this.head === null) {           // empty playlist
+      this.head = this.tail = s;
+      return s;
+    }
+    this.tail.next = s;
+    s.prev = this.tail;
+    this.tail = s;
+    return s;
+  }
+
+  // (b) Insert after the song named key
+  insertAfter(key, title, duration, extra = {}) {
+    const k = this.findSong(key);
+    if (k === null) {
+      print(`Song "${key}" not found. Cannot insert "${title}".`);
+      return null;
+    }
+    const s = new Song(title, duration, extra.artist, extra.art, extra.preview);
+    s.prev = k;
+    s.next = k.next;
+    if (k.next !== null) k.next.prev = s;   // middle: fix next node's prev
+    else this.tail = s;                     // key was last: new tail
+    k.next = s;
+    return s;
+  }
+
+  // (c) Remove first song with this title
+  removeSong(title) {
+    const s = this.findSong(title);
+    if (s === null) {
+      print(`Song "${title}" not found.`);
+      return null;
+    }
+    if (s.prev !== null) s.prev.next = s.next;
+    else this.head = s.next;                // removing first
+
+    if (s.next !== null) s.next.prev = s.prev;
+    else this.tail = s.prev;                // removing last
+
+    s.prev = s.next = null;                 // detach node
+    print(`Removed "${title}".`);
+    return s;
+  }
+
+  // (d) Display forward
+  displayForward() {
+    if (this.head === null) { print("Forward : (empty)"); return; }
+    let out = "Forward : ";
+    let cur = this.head;
+    while (cur !== null) {
+      out += `${cur.title} (${cur.duration})`;
+      if (cur.next !== null) out += " -> ";
+      cur = cur.next;
+    }
+    print(out);
+  }
+
+  // (d) Display backward
+  displayBackward() {
+    if (this.tail === null) { print("Backward: (empty)"); return; }
+    let out = "Backward: ";
+    let cur = this.tail;
+    while (cur !== null) {
+      out += `${cur.title} (${cur.duration})`;
+      if (cur.prev !== null) out += " -> ";
+      cur = cur.prev;
+    }
+    print(out);
+  }
+
+  // (e) Next song, wrapping from last to first
+  playNext(current) {
+    if (current === null || this.head === null) return null;
+    if (current.next === null) return this.head;   // repeat playlist
+    return current.next;
+  }
+}
+
+// =====================================================================
+//  Part C test — same steps as the Python run_test
+// =====================================================================
+function runTest(p) {
+  print("===== Part C Test =====");
+  print("1. Adding songs");
+  p.addSong("Sunrise", 210);
+  p.addSong("Desert Rain", 185);
+  p.addSong("Marina Lights", 240);
+
+  print("2-3. Inserting songs");
+  p.insertAfter("Sunrise", "Skyline", 200);
+  p.insertAfter("Marina Lights", "Night Drive", 195);
+
+  print("\n4. Playlist:");
+  p.displayForward();
+  p.displayBackward();
+
+  print("\n5. Removing songs");
+  p.removeSong("Sunrise");       // first
+  p.removeSong("Desert Rain");   // middle
+  p.removeSong("Night Drive");   // last
+  p.removeSong("Unknown");       // not found
+
+  print("\n6. Playlist after removals:");
+  p.displayForward();
+  p.displayBackward();
+
+  print("\n7. playNext from Marina Lights");
+  const nxt = p.playNext(p.findSong("Marina Lights"));
+  if (nxt !== null) print("Next song: " + nxt.title);
+}
+
+// =====================================================================
+//  Web UI (everything below is only for display)
+// =====================================================================
+const $ = (id) => document.getElementById(id);
+const logEl = $("log"), stage = $("stage"), audio = $("audio");
+
+let playlist = new Playlist();   // the ONLY place playlist songs are stored
+let current = null;              // song currently playing
+let busy = false;                // blocks clicks while an animation runs
+let nodeEl = new WeakMap();      // node -> its HTML element (drawing only)
+
+function print(text) {
+  logEl.textContent += text + "\n";
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function fmt(sec) {
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+}
+
+// ---------- comic effects ----------
+function fx(word, target, dark = false) {
+  let x = innerWidth / 2, y = innerHeight / 2;
+  if (target) {
+    const r = target.getBoundingClientRect();
+    x = r.left + r.width / 2; y = r.top + r.height / 2;
+  }
+  const f = el("div", "fx" + (dark ? " dark" : ""), word);
+  f.style.left = x + "px"; f.style.top = y + "px";
+  document.body.appendChild(f);
+  setTimeout(() => f.remove(), 950);
+}
+function speedLines() {
+  const s = el("div", "speedlines");
+  document.body.appendChild(s);
+  setTimeout(() => s.remove(), 460);
+}
+function shake() {
+  document.body.classList.remove("shake");
+  void document.body.offsetWidth;
+  document.body.classList.add("shake");
+}
+
+// ---------- draw the linked list by walking it head -> tail ----------
+function render(newNode = null) {
+  stage.innerHTML = "";
+  nodeEl = new WeakMap();
+  refreshKeySelect();
+
+  if (playlist.head === null) {
+    const e = el("div", "empty", "PLAYLIST EMPTY!");
+    e.appendChild(el("small", "", "head = NULL, tail = NULL. Search for a song and add it."));
+    stage.appendChild(e);
+    return;
+  }
+
+  stage.appendChild(el("div", "nullbox", "NULL"));
+  stage.appendChild(makeLink());
+
+  let cur = playlist.head;
+  while (cur !== null) {
+    const n = el("div", "node");
+    if (cur === current) n.classList.add("playing");
+    if (cur === newNode) n.classList.add("new");
+
+    if (cur.art) {
+      const img = el("img"); img.src = cur.art; img.alt = ""; n.appendChild(img);
+    } else {
+      n.appendChild(el("div", "noart", "♪"));
+    }
+    n.appendChild(el("div", "t", cur.title));
+    n.appendChild(el("div", "d", (cur.artist ? cur.artist + " · " : "") + fmt(cur.duration)));
+
+    const ctrl = el("div", "ctrl");
+    const playB = el("button", "btn small", "▶");
+    const delB = el("button", "btn small red", "✖ Remove");
+    const node = cur;
+    playB.onclick = () => playSong(node);
+    delB.onclick = () => removeByTitle(node.title);
+    ctrl.append(playB, delB);
+    n.appendChild(ctrl);
+
+    if (cur === playlist.head) n.appendChild(el("div", "tag head", "HEAD"));
+    if (cur === playlist.tail) n.appendChild(el("div", "tag tail", "TAIL"));
+
+    stage.appendChild(n);
+    nodeEl.set(cur, n);
+    stage.appendChild(makeLink(cur.next === null));
+    cur = cur.next;
+  }
+  stage.appendChild(el("div", "nullbox", "NULL"));
+}
+
+function makeLink(toNull = false) {
+  const l = el("div", "link");
+  const a1 = el("div", "arrow next"); const a2 = el("div", "arrow prev");
+  l.append(el("span", "", "next"), a1, a2, el("span", "", "prev"));
+  if (toNull) l.style.opacity = ".45";
+  return l;
+}
+
+function refreshKeySelect() {
+  const sel = $("keySel");
+  const keep = sel.value;
+  sel.innerHTML = "";
+  if (playlist.head === null) {
+    sel.appendChild(new Option("(playlist empty)", ""));
+    return;
+  }
+  let cur = playlist.head;                  // traverse to list titles
+  while (cur !== null) {
+    sel.appendChild(new Option(cur.title, cur.title));
+    cur = cur.next;
+  }
+  if ([...sel.options].some(o => o.value === keep)) sel.value = keep;
+}
+
+// ---------- search (iTunes Search API, no key needed) ----------
+let lastResults = [];   // search results only — NOT the playlist
+
+async function search(q) {
+  const url = "https://itunes.apple.com/search?media=music&entity=song&limit=16&term=" + encodeURIComponent(q);
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error("bad status");
+    return (await r.json()).results;
+  } catch (e) {
+    return jsonp(url);   // fallback if the browser blocks fetch
+  }
+}
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cb = "cb" + Date.now();
+    const s = document.createElement("script");
+    window[cb] = (data) => { resolve(data.results); delete window[cb]; s.remove(); };
+    s.onerror = () => { reject(new Error("network")); s.remove(); };
+    s.src = url + "&callback=" + cb;
+    document.body.appendChild(s);
+  });
+}
+
+$("searchForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const q = $("q").value.trim();
+  if (!q) { fx("TYPE SOMETHING!", $("q")); shake(); return; }
+  const box = $("results");
+  box.innerHTML = '<div class="empty-note">Searching…</div>';
+  try {
+    lastResults = (await search(q)).filter(t => t.trackName);
+  } catch {
+    box.innerHTML = '<div class="empty-note">Search failed. Check your internet connection.</div>';
+    shake(); return;
+  }
+  box.innerHTML = "";
+  if (lastResults.length === 0) {
+    box.innerHTML = '<div class="empty-note">No songs found.</div>';
+    fx("NANI?!", $("q"), true); return;
+  }
+  lastResults.forEach((t) => {
+    const c = el("div", "card");
+    const img = el("img"); img.src = (t.artworkUrl100 || "").replace("100x100", "300x300"); img.alt = "";
+    c.append(img, el("div", "t", t.trackName), el("div", "a", `${t.artistName} · ${fmt(Math.round((t.trackTimeMillis || 0) / 1000))}`));
+    const row = el("div", "row");
+    const addB = el("button", "btn small", "+ Add to end");
+    const insB = el("button", "btn small red", "Insert after");
+    const pre = el("button", "btn small black", "▶");
+    addB.onclick = () => addTrack(t);
+    insB.onclick = () => insertTrack(t);
+    pre.onclick = () => previewOnly(t);
+    row.append(addB, insB, pre);
+    c.appendChild(row);
+    box.appendChild(c);
+  });
+  fx("FOUND!", box.firstChild);
+};
+
+function trackInfo(t) {
+  return {
+    title: t.trackName.slice(0, 30),
+    duration: Math.round((t.trackTimeMillis || 0) / 1000),
+    extra: {
+      artist: t.artistName,
+      art: (t.artworkUrl100 || "").replace("100x100", "300x300"),
+      preview: t.previewUrl || ""
+    }
+  };
+}
+
+// ---------- actions (each one calls a Playlist method) ----------
+function addTrack(t) {
+  if (busy) return;
+  const s = trackInfo(t);
+  if (playlist.findSong(s.title)) { print(`"${s.title}" is already in the playlist.`); fx("ALREADY THERE!", null, true); shake(); return; }
+  const node = playlist.addSong(s.title, s.duration, s.extra);
+  print(`Added "${s.title}" at the end.`);
+  render(node);
+  fx("POW!", nodeEl.get(node));
+  nodeEl.get(node).scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+}
+
+function insertTrack(t) {
+  if (busy) return;
+  const s = trackInfo(t);
+  const key = $("keySel").value;
+  if (!key) { print("Playlist is empty. Use 'Add to end' first."); fx("EMPTY!", null, true); shake(); return; }
+  if (playlist.findSong(s.title)) { print(`"${s.title}" is already in the playlist.`); fx("ALREADY THERE!", null, true); shake(); return; }
+  const node = playlist.insertAfter(key, s.title, s.duration, s.extra);
+  if (node === null) { fx("NANI?!", null, true); shake(); render(); return; }
+  print(`Inserted "${s.title}" after "${key}".`);
+  render(node);
+  fx("BAM!", nodeEl.get(node));
+  nodeEl.get(node).scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+}
+
+function removeByTitle(title) {
+  if (busy) return;
+  const s = playlist.findSong(title);
+  if (s === null) { playlist.removeSong(title); fx("NANI?!", null, true); shake(); return; }
+  busy = true;
+  const e = nodeEl.get(s);
+  fx("BOOM!", e);
+  shake();
+  e.classList.add("boom");
+  setTimeout(() => {
+    if (current === s) { stopAudio(); current = null; updatePlayer(); }
+    playlist.removeSong(title);
+    busy = false;
+    render();
+  }, 480);
+}
+
+function traverse(forward) {
+  if (busy) return;
+  if (forward) playlist.displayForward(); else playlist.displayBackward();
+  let node = forward ? playlist.head : playlist.tail;
+  if (node === null) { fx("EMPTY!", null, true); return; }
+  busy = true;
+  fx(forward ? "GO →" : "← BACK", null);
+  const step = () => {
+    if (node === null) { busy = false; return; }
+    const e = nodeEl.get(node);
+    e.classList.add("flash");
+    e.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    setTimeout(() => e.classList.remove("flash"), 300);
+    node = forward ? node.next : node.prev;   // follow the pointers
+    setTimeout(step, 360);
+  };
+  step();
+}
+
+function nextSong() {
+  if (busy) return;
+  if (playlist.head === null) { print("Playlist is empty."); fx("EMPTY!", null, true); shake(); return; }
+  if (current === null) { playSong(playlist.head); return; }
+  const wrap = current.next === null;
+  const nxt = playlist.playNext(current);
+  speedLines();
+  if (wrap) print("Reached the end -> repeating from the first song.");
+  playSong(nxt, wrap ? "REPEAT!!" : "WHOOSH!");
+}
+
+// ---------- audio ----------
+function playSong(node, word = "PLAY!") {
+  current = node;
+  render();
+  const e = nodeEl.get(node);
+  fx(word, e);
+  e.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  updatePlayer();
+  if (node.preview) {
+    audio.src = node.preview;
+    audio.play().catch(() => {});
+  } else {
+    stopAudio();
+    print(`"${node.title}" has no audio preview (test song). Press NEXT to move on.`);
+  }
+}
+function previewOnly(t) {
+  if (!t.previewUrl) { fx("NO AUDIO!", null, true); return; }
+  audio.src = t.previewUrl; audio.play().catch(() => {});
+  $("pTitle").textContent = "Preview: " + t.trackName;
+  $("pSub").textContent = t.artistName + " (not in playlist)";
+}
+function stopAudio() { audio.pause(); audio.removeAttribute("src"); audio.load(); $("pBar").style.width = "0"; }
+
+function updatePlayer() {
+  const art = $("pArt");
+  if (current === null) {
+    $("pTitle").textContent = "Nothing playing";
+    $("pSub").textContent = "Add songs, then press play";
+    art.outerHTML = '<div class="noart" id="pArt">♪</div>';
+    return;
+  }
+  $("pTitle").textContent = "♫ " + current.title;
+  $("pSub").textContent = (current.artist || "Test song") + " · " + fmt(current.duration) +
+                          (current.preview ? " · 30-second preview" : "");
+  art.outerHTML = current.art ? `<img id="pArt" alt="" src="${encodeURI(current.art)}">` : '<div class="noart" id="pArt">♪</div>';
+}
+
+audio.ontimeupdate = () => {
+  if (audio.duration) $("pBar").style.width = (audio.currentTime / audio.duration * 100) + "%";
+};
+audio.onplay = () => { $("eq").classList.add("on"); $("pauseBtn").textContent = "❚❚"; };
+audio.onpause = () => { $("eq").classList.remove("on"); $("pauseBtn").textContent = "▶"; };
+audio.onended = () => { if (current !== null) nextSong(); };   // auto-advance with playNext
+
+// ---------- buttons ----------
+$("fwdBtn").onclick = () => traverse(true);
+$("bwdBtn").onclick = () => traverse(false);
+$("nextBtn").onclick = nextSong;
+$("nextBtn2").onclick = nextSong;
+$("pauseBtn").onclick = () => {
+  if (!audio.src) { if (current === null) nextSong(); return; }
+  audio.paused ? audio.play() : audio.pause();
+};
+$("clearBtn").onclick = () => { logEl.textContent = ""; };
+$("testBtn").onclick = () => {
+  if (busy) return;
+  stopAudio();
+  playlist = new Playlist();   // fresh playlist for the official test
+  current = null;
+  updatePlayer();
+  runTest(playlist);
+  render();
+  fx("TEST CLEAR!!", stage);
+};
+
+render();
+print("Welcome to Melody Café! Search a song to begin.");
+</script>
+</body>
+</html>
